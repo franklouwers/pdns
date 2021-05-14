@@ -1,0 +1,68 @@
+diff -Npru pdns-recursor-4.4.3.orig/pdns_recursor.cc pdns-recursor-4.4.3/pdns_recursor.cc
+--- pdns-recursor-4.4.3.orig/pdns_recursor.cc	2021-03-29 17:56:55.000000000 +0000
++++ pdns-recursor-4.4.3/pdns_recursor.cc	2021-05-14 15:30:32.556469358 +0000
+@@ -4363,6 +4363,7 @@ static int serviceMain(int argc, char*ar
+   SyncRes::s_maxtotusec=1000*::arg().asNum("max-total-msec");
+   SyncRes::s_maxdepth=::arg().asNum("max-recursion-depth");
+   SyncRes::s_rootNXTrust = ::arg().mustDo( "root-nx-trust");
++  SyncRes::s_relaxAA = ::arg().mustDo("relax-aa");
+   if(SyncRes::s_serverID.empty()) {
+     SyncRes::s_serverID = myHostname;
+   }
+@@ -5154,6 +5155,7 @@ int main(int argc, char **argv)
+     ::arg().setSwitch( "use-incoming-edns-subnet", "Pass along received EDNS Client Subnet information")="no";
+     ::arg().setSwitch( "pdns-distributes-queries", "If PowerDNS itself should distribute queries over threads")="yes";
+     ::arg().setSwitch( "root-nx-trust", "If set, believe that an NXDOMAIN from the root means the TLD does not exist")="yes";
++    ::arg().setSwitch( "relax-aa", "If set, accept aa=0 answers from auths")="yes";
+     ::arg().setSwitch( "any-to-tcp","Answer ANY queries with tc=1, shunting to TCP" )="no";
+     ::arg().setSwitch( "lowercase-outgoing","Force outgoing questions to lowercase")="no";
+     ::arg().setSwitch("gettag-needs-edns-options", "If EDNS Options should be extracted before calling the gettag() hook")="no";
+diff -Npru pdns-recursor-4.4.3.orig/syncres.cc pdns-recursor-4.4.3/syncres.cc
+--- pdns-recursor-4.4.3.orig/syncres.cc	2021-03-29 17:56:55.000000000 +0000
++++ pdns-recursor-4.4.3/syncres.cc	2021-05-14 15:33:38.224469358 +0000
+@@ -91,6 +91,7 @@ bool SyncRes::s_nopacketcache;
+ bool SyncRes::s_rootNXTrust;
+ bool SyncRes::s_noEDNS;
+ bool SyncRes::s_qnameminimization;
++bool SyncRes::s_relaxAA;
+ SyncRes::HardenNXD SyncRes::s_hardenNXD;
+
+ #define LOG(x) if(d_lm == Log) { g_log <<Logger::Warning << x; } else if(d_lm == Store) { d_trace << x; }
+@@ -2854,7 +2855,7 @@ void SyncRes::sanitizeRecords(const std:
+     }
+
+     /* dealing with the records in answer */
+-    if (!(lwr.d_aabit || wasForwardRecurse) && rec->d_place == DNSResourceRecord::ANSWER) {
++    if (!(lwr.d_aabit || wasForwardRecurse || s_relaxAA) && rec->d_place == DNSResourceRecord::ANSWER) {
+       /* for now we allow a CNAME for the exact qname in ANSWER with AA=0, because Amazon DNS servers
+          are sending such responses */
+       if (!(rec->d_type == QType::CNAME && qname == rec->d_name)) {
+@@ -3046,7 +3047,7 @@ RCode::rcodes_ SyncRes::updateCacheFromR
+       continue;
+     }
+
+-    if (!(lwr.d_aabit || wasForwardRecurse) && rec.d_place == DNSResourceRecord::ANSWER) {
++    if (!(lwr.d_aabit || wasForwardRecurse || s_relaxAA) && rec.d_place == DNSResourceRecord::ANSWER) {
+       /* for now we allow a CNAME for the exact qname in ANSWER with AA=0, because Amazon DNS servers
+          are sending such responses */
+       if (!(rec.d_type == QType::CNAME && rec.d_name == qname)) {
+@@ -3340,7 +3341,7 @@ bool SyncRes::processRecords(const std::
+     if (rec.d_type!=QType::OPT && rec.d_class!=QClass::IN)
+       continue;
+
+-    if (rec.d_place==DNSResourceRecord::ANSWER && !(lwr.d_aabit || sendRDQuery)) {
++    if (rec.d_place==DNSResourceRecord::ANSWER && !(lwr.d_aabit || sendRDQuery || s_relaxAA)) {
+       /* for now we allow a CNAME for the exact qname in ANSWER with AA=0, because Amazon DNS servers
+          are sending such responses */
+       if (!(rec.d_type == QType::CNAME && rec.d_name == qname)) {
+diff -Npru pdns-recursor-4.4.3.orig/syncres.hh pdns-recursor-4.4.3/syncres.hh
+--- pdns-recursor-4.4.3.orig/syncres.hh	2021-03-29 17:56:55.000000000 +0000
++++ pdns-recursor-4.4.3/syncres.hh	2021-05-14 15:34:00.816469358 +0000
+@@ -778,6 +778,7 @@ public:
+   static bool s_noEDNSPing;
+   static bool s_noEDNS;
+   static bool s_rootNXTrust;
++  static bool s_relaxAA;
+   static bool s_nopacketcache;
+   static bool s_qnameminimization;
+   static HardenNXD s_hardenNXD;
