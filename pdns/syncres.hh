@@ -778,6 +778,7 @@ public:
   static bool s_noEDNSPing;
   static bool s_noEDNS;
   static bool s_rootNXTrust;
+  static bool s_relaxAA;
   static bool s_nopacketcache;
   static bool s_qnameminimization;
   static HardenNXD s_hardenNXD;

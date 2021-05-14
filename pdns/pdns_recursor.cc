@@ -4363,6 +4363,7 @@ static int serviceMain(int argc, char*argv[])
   SyncRes::s_maxtotusec=1000*::arg().asNum("max-total-msec");
   SyncRes::s_maxdepth=::arg().asNum("max-recursion-depth");
   SyncRes::s_rootNXTrust = ::arg().mustDo( "root-nx-trust");
+  SyncRes::s_relaxAA = ::arg().mustDo("relax-aa");
   if(SyncRes::s_serverID.empty()) {
     SyncRes::s_serverID = myHostname;
   }
@@ -5154,6 +5155,7 @@ int main(int argc, char **argv)
     ::arg().setSwitch( "use-incoming-edns-subnet", "Pass along received EDNS Client Subnet information")="no";
     ::arg().setSwitch( "pdns-distributes-queries", "If PowerDNS itself should distribute queries over threads")="yes";
     ::arg().setSwitch( "root-nx-trust", "If set, believe that an NXDOMAIN from the root means the TLD does not exist")="yes";
+    ::arg().setSwitch( "relax-aa", "If set, accept aa=0 answers from auths")="yes";
     ::arg().setSwitch( "any-to-tcp","Answer ANY queries with tc=1, shunting to TCP" )="no";
     ::arg().setSwitch( "lowercase-outgoing","Force outgoing questions to lowercase")="no";
     ::arg().setSwitch("gettag-needs-edns-options", "If EDNS Options should be extracted before calling the gettag() hook")="no";

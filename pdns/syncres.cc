@@ -91,6 +91,7 @@ bool SyncRes::s_nopacketcache;
 bool SyncRes::s_rootNXTrust;
 bool SyncRes::s_noEDNS;
 bool SyncRes::s_qnameminimization;
+bool SyncRes::s_relaxAA;
 SyncRes::HardenNXD SyncRes::s_hardenNXD;
 
 #define LOG(x) if(d_lm == Log) { g_log <<Logger::Warning << x; } else if(d_lm == Store) { d_trace << x; }
@@ -2854,7 +2855,7 @@ void SyncRes::sanitizeRecords(const std::string& prefix, LWResult& lwr, const DN
     }
 
     /* dealing with the records in answer */
-    if (!(lwr.d_aabit || wasForwardRecurse) && rec->d_place == DNSResourceRecord::ANSWER) {
+    if (!(lwr.d_aabit || wasForwardRecurse || s_relaxAA) && rec->d_place == DNSResourceRecord::ANSWER) {
       /* for now we allow a CNAME for the exact qname in ANSWER with AA=0, because Amazon DNS servers
          are sending such responses */
       if (!(rec->d_type == QType::CNAME && qname == rec->d_name)) {
@@ -3046,7 +3047,7 @@ RCode::rcodes_ SyncRes::updateCacheFromRecords(unsigned int depth, LWResult& lwr
       continue;
     }
 
-    if (!(lwr.d_aabit || wasForwardRecurse) && rec.d_place == DNSResourceRecord::ANSWER) {
+    if (!(lwr.d_aabit || wasForwardRecurse || s_relaxAA) && rec.d_place == DNSResourceRecord::ANSWER) {
       /* for now we allow a CNAME for the exact qname in ANSWER with AA=0, because Amazon DNS servers
          are sending such responses */
       if (!(rec.d_type == QType::CNAME && rec.d_name == qname)) {
@@ -3340,7 +3341,7 @@ bool SyncRes::processRecords(const std::string& prefix, const DNSName& qname, co
     if (rec.d_type!=QType::OPT && rec.d_class!=QClass::IN)
       continue;
 
-    if (rec.d_place==DNSResourceRecord::ANSWER && !(lwr.d_aabit || sendRDQuery)) {
+    if (rec.d_place==DNSResourceRecord::ANSWER && !(lwr.d_aabit || sendRDQuery || s_relaxAA)) {
       /* for now we allow a CNAME for the exact qname in ANSWER with AA=0, because Amazon DNS servers
          are sending such responses */
       if (!(rec.d_type == QType::CNAME && rec.d_name == qname)) {
